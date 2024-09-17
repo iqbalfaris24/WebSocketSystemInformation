@@ -9,6 +9,7 @@ venv/
 ENV/
 venv.bak/
 *.env
+*.wsgi
 
 # Flask
 instance/
