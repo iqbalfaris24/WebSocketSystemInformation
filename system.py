@@ -3,9 +3,47 @@ import threading
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO
+import re
+import os
 
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*")  # Mengizinkan semua origin untuk akses
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Variabel global untuk menyimpan hasil perhitungan log
+log_access_summary = {}
+log_directory = '/var/log/apache2/'  # Tentukan direktori log
+
+def parse_log_file(file_path):
+    count = 0
+    log_pattern = re.compile(
+        r'(?P<ip>\d+\.\d+\.\d+\.\d+)\s'
+        r'(?P<identd>\S+)\s'
+        r'(?P<user>\S+)\s'
+        r'\[(?P<time>[^\]]+)\]\s'
+        r'"(?P<method>\S+)\s(?P<path>\S+)\s(?P<proto>\S+)"\s'
+        r'(?P<status>\d+)\s'
+        r'(?P<size>\d+|-)\s'
+        r'"(?P<referer>[^"]*)"\s'
+        r'"(?P<user_agent>[^"]*)"'
+    )
+    
+    with open(file_path, 'r') as file:
+        for line in file:
+            match = log_pattern.match(line)
+            if match:
+                log_data = match.groupdict()
+                if log_data['method'] == 'GET' and log_data['path'] == '/':
+                    count += 1
+    return count
+
+def process_log_files():
+    global log_access_summary
+    log_files = [f for f in os.listdir(log_directory) if f.endswith('_access.log')]
+    
+    for log_file in log_files:
+        file_path = os.path.join(log_directory, log_file)
+        count = parse_log_file(file_path)
+        log_access_summary[log_file] = count
 
 def get_system_status():
     # CPU usage
@@ -26,7 +64,6 @@ def get_system_status():
     storage_usage_percent = disk_info.percent
     storage_total = disk_info.total / (1024**3)
     storage_used = disk_info.used / (1024**3)
-
     # CPU temperature (note: may not work on all systems)
     try:
         temp_info = psutil.sensors_temperatures()
@@ -48,7 +85,11 @@ def get_system_status():
         'storage_percent': storage_usage_percent,
         'storage_total': f"{storage_total:.2f}",
         'storage_used': f"{storage_used:.2f}",
+        'log_status':'Hellow'
     }
+
+def send_log_status():
+    socketio.emit('log_status_update', log_access_summary)
 
 def background_thread():
     """Mengirim data status sistem ke klien setiap 5 detik"""
