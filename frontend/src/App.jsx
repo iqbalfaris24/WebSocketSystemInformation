@@ -8,7 +8,11 @@ import { FiSun, FiMoon } from "react-icons/fi";
 ChartJS.register(ArcElement, Legend);
 
 function App() {
-    const socket = io("https://systemstatus.iqbalfaris.my.id/"); // Menghubungkan ke backend Flask
+    const socket = io("https://systemstatus.iqbalfaris.my.id", {
+        transports: ["websocket"], // Prioritaskan WebSocket
+    });
+
+    // const socket = io("https://systemstatus.iqbalfaris.my.id/"); // Menghubungkan ke backend Flask
     const [connected, setConnected] = useState(false); // Menyimpan status koneksi
     const [darkMode, setDarkMode] = useState(false);
     const [status, setStatus] = useState({
@@ -112,12 +116,16 @@ function App() {
                     </a>
                     <div className="right-option flex gap-4 items-center w-full justify-around md:justify-end ">
                         <div className="flex items-center gap-1">
-                            <FiSun color={`${darkMode ? "#4A4B50" : ""}`} />
+                            <FiSun
+                                color={`${darkMode ? "#ffffff" : "#FFDE59"}`}
+                            />
                             <Switch
                                 checked={darkMode}
                                 onCheckedChange={toggleDarkMode}
                             />
-                            <FiMoon color={`${darkMode ? "" : "#4A4B50"}`} />
+                            <FiMoon
+                                color={`${darkMode ? "#000000" : "#ffffff"}`}
+                            />
                         </div>
                         <div className="status flex bg-navy-blue text-white p-2 rounded-md items-center gap-2">
                             <h6>
@@ -156,8 +164,8 @@ function App() {
             {/* Main Page */}
             <div className="flex justify-center bg-white min-h-screen dark:bg-navy-blue dark:text-white">
                 <div className="container mt-4 md:mt-12">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mx-2 md:mx-0">
-                        <div className="card md:flex rounded-sm md:rounded-3xl min-h-40 p-4 text-white bg-dark-blue">
+                    <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mx-2 md:mx-0 xl:grid-cols-3">
+                        <div className="card flex flex-wrap justify-center min-h-40 p-4 rounded-sm text-white bg-dark-blue md:flex-nowrap md:rounded-3xl">
                             <div className="chart relative w-32 h-32 -mt-1">
                                 <Doughnut data={cpuData} options={options} />
                                 <div
@@ -204,7 +212,7 @@ function App() {
                             </div>
                         </div>
 
-                        <div className="card md:flex rounded-sm md:rounded-3xl min-h-40 p-4 text-white bg-dark-blue">
+                        <div className="card flex flex-wrap justify-center min-h-40 p-4 rounded-sm text-white bg-dark-blue md:flex-nowrap md:rounded-3xl">
                             <div className="chart relative w-32 h-32 -mt-1">
                                 <Doughnut data={memoryData} options={options} />
                                 <div
@@ -248,7 +256,7 @@ function App() {
                             </div>
                         </div>
 
-                        <div className="card md:flex rounded-sm md:rounded-3xl min-h-40 p-4 text-white bg-dark-blue">
+                        <div className="card flex flex-wrap justify-center min-h-40 p-4 rounded-sm text-white bg-dark-blue md:flex-nowrap md:rounded-3xl">
                             <div className="chart relative w-32 h-32 -mt-1">
                                 <Doughnut
                                     data={storageData}
