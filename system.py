@@ -32,6 +32,8 @@ def parse_log_file(file_path):
             match = log_pattern.match(line)
             if match:
                 log_data = match.groupdict()
+                # log_data['size'] = int(log_data['size']) if log_data['size'] != '-' else 0
+
                 if log_data['method'] == 'GET' and log_data['path'] == '/':
                     count += 1
     return count
@@ -43,7 +45,9 @@ def process_log_files():
     for log_file in log_files:
         file_path = os.path.join(log_directory, log_file)
         count = parse_log_file(file_path)
-        log_access_summary[log_file] = count
+        # Menghapus '_access.log' dari nama file sebelum menambahkannya ke summary
+        log_access_summary[log_file.replace('_access.log', '')] = count
+    return log_access_summary
 
 def get_system_status():
     # CPU usage
@@ -85,11 +89,8 @@ def get_system_status():
         'storage_percent': storage_usage_percent,
         'storage_total': f"{storage_total:.2f}",
         'storage_used': f"{storage_used:.2f}",
-        'log_status':'Hellow'
+        'log_status':log_access_summary
     }
-
-def send_log_status():
-    socketio.emit('log_status_update', log_access_summary)
 
 def background_thread():
     """Mengirim data status sistem ke klien setiap 5 detik"""
@@ -100,6 +101,7 @@ def background_thread():
 
 @socketio.on('connect')
 def handle_connect():
+    process_log_files()
     print("Client connected")
     global thread
     # Menggunakan lock untuk memastikan hanya ada satu thread yang berjalan
