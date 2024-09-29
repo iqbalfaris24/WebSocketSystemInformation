@@ -1,10 +1,12 @@
 import psutil
 import threading
-from flask import Flask, jsonify
+from flask import Flask
 from flask_cors import CORS
 from flask_socketio import SocketIO
 import re
 import os
+import time
+import cpuinfo
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -12,6 +14,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 # Variabel global untuk menyimpan hasil perhitungan log
 log_access_summary = {}
 log_directory = '/var/log/apache2/'  # Tentukan direktori log
+systemInfo = {}
 
 def parse_log_file(file_path):
     count = 0
@@ -49,6 +52,32 @@ def process_log_files():
         log_access_summary[log_file.replace('_access.log', '')] = count
     return log_access_summary
 
+def get_uptime():
+    global systemInfo
+    # Data Uptime
+    boot_time = psutil.boot_time()
+    uptime_seconds = time.time() - boot_time
+    # Menghitung hari, jam, dan menit uptime
+    days = int(uptime_seconds // (24 * 3600))
+    hours = int((uptime_seconds % (24 * 3600)) // 3600)
+    minutes = int((uptime_seconds % 3600) // 60)
+    # CPU Info
+    cpuInfo = cpuinfo.get_cpu_info()
+    brandCpu = cpuInfo['brand_raw']
+    # OS Info
+    # Memperbaiki struktur untuk dictionary
+    systemInfo = {
+        'uptime' : {
+            'days': days,
+            'hours': hours,
+            'minutes': minutes
+        },
+        'processor': brandCpu,
+        'os': os.uname().sysname,
+        'os_version': os.uname().version
+    }
+    return systemInfo
+
 def get_system_status():
     # CPU usage
     cpu_freq = psutil.cpu_freq()
@@ -77,19 +106,29 @@ def get_system_status():
 
     return {
         'cpu': {
+            'processor': systemInfo['processor'],
             'current': f"{current_freq:.2f}",
             'min': f"{min_freq:.2f}",
             'max': f"{max_freq:.2f}",
             'temperature': cpu_temp,
             'percent': (current_freq / 2.0) * 100
         },
-        'memory_percent': memory_usage_percent,
-        'memory_total': f"{memory_total:.2f}",
-        'memory_used': f"{memory_used:.2f}",
-        'storage_percent': storage_usage_percent,
-        'storage_total': f"{storage_total:.2f}",
-        'storage_used': f"{storage_used:.2f}",
-        'log_status':log_access_summary
+        'memory':{
+            'percent': memory_usage_percent,
+            'total': f"{memory_total:.2f}",
+            'used': f"{memory_used:.2f}",
+        },
+        'storage':{
+            'percent': storage_usage_percent,
+            'total': f"{storage_total:.2f}",
+            'used': f"{storage_used:.2f}",
+        },
+        'log_status': log_access_summary,
+        'system_info': {
+            'uptime': systemInfo['uptime'],
+            'os': systemInfo['os'],
+            'os_version': systemInfo['os_version'],
+        }
     }
 
 def background_thread():
@@ -102,6 +141,7 @@ def background_thread():
 @socketio.on('connect')
 def handle_connect():
     process_log_files()
+    get_uptime()
     print("Client connected")
     global thread
     # Menggunakan lock untuk memastikan hanya ada satu thread yang berjalan
